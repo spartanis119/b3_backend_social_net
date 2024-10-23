@@ -137,3 +137,164 @@ export const login = async (req, res) => {
     });
   }
 };
+
+// Metodo par mostrara el perfil de un usuario
+
+export const profile = async (req, res) => {
+  try {
+    // Obtener el Id de usuario desde los parametros de la url
+    const userId = req.params.id;
+
+    // Validar si el id del usuario autenticado esta disponible
+    if (!req.user || !req.user.userId) {
+      return res.status(401).send({
+        status: "Error",
+        message: "Usuario no autenticado"
+      });
+    }
+    // Buscar el usuario en la BD y exclisvo los datos que no queremos mostrar
+    const userProfile = await User.findById(userId).select('-password -role -email -__v');
+    // Verificar si el usuario buscado no existe
+    if (!userProfile) {
+      return res.status(404).send({
+        status: "error",
+        message: "Usuario no encontrado"
+      });
+    }
+
+    // Devolver la informacion del perfil de usuario solicitado
+
+    return res.status(200).json({
+      status: 'success',
+      user: userProfile
+    });
+
+  } catch (error) {
+    console.log("Error al obtener el perfil de usuario: ", error);
+    // Devolver mensaje de error
+    return res.status(500).send({
+      status: "error",
+      message: "Error al obtener el perfil de usuario"
+    });
+  }
+};
+
+// Metodo para listar los usuarios
+export const listUser = async (req, res) => {
+  try {
+    // Controlar la pagina actual
+    let page = req.params.page ? parseInt(req.params.page, 10) : 1;
+
+    // Configurar los items  por pagina a mostrar
+    let itemsPerPage = req.query.limit ? parseInt(req.params.page, 10) : 2;
+
+    // realizar consulta pagina
+    const options = {
+      page: page,
+      limit: itemsPerPage,
+      select: "-password -email -role -__v"
+    };
+
+    const users = await User.paginate({}, options);
+    // Si no existen usuarios de la base de datos
+    if (!users || users.docs.length === 0) {
+      return res.status(404).send({
+        status: "error",
+        message: "No existen usuarios disponibles"
+      });
+    }
+
+    // Devolver usuarios paginados
+    res.status(200).json({
+      status: "error",
+      users: users.docs,
+      totalDocs: users.totalDocs,
+      totalPage: users.totalPages,
+      currentPage: users.page
+    });
+
+  } catch (error) {
+    console.log("Error al listar el perfil de los usuarios: ", error);
+    // Devolver mensaje de error
+    return res.status(500).send({
+      status: "error",
+      message: "Error al listar el perfil de los usuarios"
+    });
+  }
+};
+
+// Metodo para actulizar datos del usuario
+export const updateUser = async (req, res) => {
+  try {
+
+    let userIdentity = req.user;
+    let userToUpdate = req.body;
+
+    // Eliminar campos que sobran porque no lo vamos a actualizar
+
+    delete userToUpdate.iat;
+    delete userToUpdate.exp;
+    delete userToUpdate.role;
+
+    // Comobamos si el usuario ya existe en la base de datos
+    const users = await User.find({
+      $or: [
+        { email: userToUpdate.email },
+        { nick: userToUpdate.nick }
+      ]
+    }).exec();
+
+    // Vericar si el usuario esta duplicado para evitar conflictos
+    const isDuplicateUser = users.some(user => {
+      return user && user._id.toString() !== userIdentity.userId
+    })
+
+    if (isDuplicateUser) {
+      return res.status(400).send({
+        status: "error",
+        message: "Error solo se puede actulizar datos del usuario autenticado"
+      });
+    }
+
+    // Cifrar la contrasena en caso que la envien en la peticion
+    if (userToUpdate.password) {
+      try {
+        let password = await bcrypt.hash(userToUpdate.password, 10);
+        userToUpdate.password = password;
+      } catch (hashError) {
+        return res.status(500).send({
+          status: "error",
+          message: "Error al encriptar la contrasena"
+        });
+      }
+    } else {
+      delete userToUpdate.password;
+    }
+
+    // Buscar y actualizar el usuario en Mongo
+    let userUpdated = await User.findByIdAndUpdate(userIdentity.userId, userToUpdate, { new: true });
+
+
+    if (!userUpdated) {
+      return res.status(500).send({
+        status: "error",
+        message: "Error al actulializar al usuario"
+      });
+    }
+    // Devolver la respuesta exitosa
+    return res.status(200).json({
+      status: "success",
+      message: "Usuario actualizado",
+      user : userUpdated
+    });
+
+    
+  } catch (error) {
+    console.log("Error al actulizar datos del usuario", error);
+    // Devolver mensaje de error
+    return res.status(500).send({
+      status: "error",
+      message: "Error al actulizar datos del usuario"
+    });
+  }
+}
