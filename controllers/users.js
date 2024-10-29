@@ -285,16 +285,88 @@ export const updateUser = async (req, res) => {
     return res.status(200).json({
       status: "success",
       message: "Usuario actualizado",
-      user : userUpdated
+      user: userUpdated
     });
 
-    
+
   } catch (error) {
     console.log("Error al actulizar datos del usuario", error);
     // Devolver mensaje de error
     return res.status(500).send({
       status: "error",
       message: "Error al actulizar datos del usuario"
+    });
+  }
+}
+
+// Metodo subir avatar (Imagen de perfil) y actualizamos el campo image
+export const uploadAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).send({
+        status: "error",
+        message: "Error, la peticion no incluye la imagen"
+      });
+    }
+    // Obtener la Url del archivo subido en Cloudinary
+    const avatarUrl = req.file.path;
+
+    // Guardar la imagen en la base de datos
+    const userUpdated = await User.findByIdAndUpdate(req.user.userId, { image: avatarUrl }, { new: true });
+
+    // Validar que si se halla actualizado
+    if (!userUpdated) {
+      return res.status(500).send({
+        status: "error",
+        message: "Error al subir el archivo del avatar"
+      });
+    }
+
+    // Mensaje de exito
+    return res.status(200).json({
+      status: "success",
+      message: "Avatar subido exitosamente",
+      user: userUpdated,
+      file: avatarUrl
+    });
+
+  } catch (error) {
+    console.log("Error al subir el archivo del avatar", error);
+    // Devolver mensaje de error
+    return res.status(500).send({
+      status: "error",
+      message: "Error al subir el archivo del avatar"
+    });
+  }
+}
+
+// Metodo para mostrar el Avatar (Imagen del perfil)
+export const avatar = async (req, res) => {
+  try {
+    // Obtener el Id desde el parametro del archivo
+    const userId = req.params.id;
+
+    // Buscar usuario en la base de datos para obtener la url de Cloudinary
+
+    const user = await User.findById(userId).select('image');
+
+    // Verificar si el usuario existe y ademas tiene una imagen
+    if (!user || !user.image) {
+      res.status(404).json({
+        status: "error",
+        message: "No existe usuario o imagen  ",
+      })
+    }
+
+    // Devolver url de la imagen de cloudinary
+    return res.redirect(user.image);
+
+  } catch (error) {
+    console.log("Error al mostrar el archivo del avatar", error);
+    // Devolver mensaje de error
+    return res.status(500).send({
+      status: "error",
+      message: "Error al mostrar el archivo del avatar"
     });
   }
 }
