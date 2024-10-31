@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { testUser, register, login, profile, listUser, updateUser, uploadAvatar, avatar } from "../controllers/users.js";
+import { testUser, register, login, profile, listUser, updateUser, uploadAvatar, avatar, counters } from "../controllers/users.js";
 import { ensureAuth } from "../middlewares/auth.js";
 import multer from 'multer';
 import { CloudinaryStorage } from "multer-storage-cloudinary";
@@ -34,6 +34,7 @@ router.get('/list/:page?', ensureAuth, listUser);
 router.put('/update', ensureAuth, updateUser);
 router.post('/uploadAvatar', ensureAuth, upload.single("file0"), uploadAvatar);
 router.get('/avatar/:id', avatar);
+router.get('/counter/:id?', ensureAuth, counters);
 
 //Exportar el Router
 export default router;
