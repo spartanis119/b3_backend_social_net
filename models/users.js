@@ -31,7 +31,7 @@ const UserSchema = Schema ({
   },
   image: {
     type: String,
-    default: "default_user.png"
+    default: "default.png"
   },
   created_at: {
     type: Date,
